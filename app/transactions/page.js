@@ -1,0 +1,370 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/auth';
+import { getParties, getTransactions, addTransaction, deleteTransaction, getCategories } from '@/lib/db';
+import { useToast } from '@/components/Toast';
+import { formatCurrency, formatDate, calculateTDS } from '@/lib/utils';
+
+export default function TransactionsPage() {
+  const { user } = useAuth();
+  const { addToast } = useToast();
+  const [parties, setParties] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState({ work: [], tdsCategory: [], tdsPercent: [] });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [formData, setFormData] = useState({
+    partyId: '',
+    companyName: '',
+    panNo: '',
+    nameAsPerPan: '',
+    paymentDate: '',
+    billNo: '',
+    workCategory: '',
+    taxableAmount: '',
+    tdsCategory: '',
+    tdsPercent: '',
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    loadData();
+  }, [user]);
+
+  async function loadData() {
+    try {
+      const [p, t, wc, tc, tp] = await Promise.all([
+        getParties(user.id),
+        getTransactions(user.id),
+        getCategories(user.id, 'work'),
+        getCategories(user.id, 'tdsCategory'),
+        getCategories(user.id, 'tdsPercent'),
+      ]);
+      setParties(p);
+      setTransactions(t);
+      setCategories({ work: wc, tdsCategory: tc, tdsPercent: tp });
+    } catch (e) {
+      addToast('Failed to load data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handlePartySelect = (partyId) => {
+    const party = parties.find(p => p.id === partyId);
+    if (party) {
+      setFormData(prev => ({
+        ...prev,
+        partyId: party.id,
+        companyName: party.companyName,
+        panNo: party.panNo,
+        nameAsPerPan: party.nameAsPerPan,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        partyId: '',
+        companyName: '',
+        panNo: '',
+        nameAsPerPan: '',
+      }));
+    }
+  };
+
+  const tdsAmount = formData.taxableAmount && formData.tdsPercent
+    ? calculateTDS(parseFloat(formData.taxableAmount), parseFloat(formData.tdsPercent))
+    : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      await addTransaction(user.id, {
+        partyId: formData.partyId,
+        companyName: formData.companyName,
+        panNo: formData.panNo,
+        nameAsPerPan: formData.nameAsPerPan,
+        paymentDate: formData.paymentDate,
+        billNo: formData.billNo,
+        workCategory: formData.workCategory,
+        taxableAmount: parseFloat(formData.taxableAmount),
+        tdsCategory: formData.tdsCategory,
+        tdsPercent: parseFloat(formData.tdsPercent),
+      });
+
+      addToast('Transaction added successfully', 'success');
+
+      // Reset form but keep party selected for fast entry
+      setFormData(prev => ({
+        ...prev,
+        paymentDate: '',
+        billNo: '',
+        workCategory: '',
+        taxableAmount: '',
+        tdsCategory: '',
+        tdsPercent: '',
+      }));
+
+      loadData();
+    } catch (e) {
+      addToast('Failed to add transaction', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (t) => {
+    if (!confirm(`Delete transaction for "${t.companyName}" - Bill ${t.billNo}?`)) return;
+    try {
+      await deleteTransaction(t.id);
+      addToast('Transaction deleted', 'success');
+      loadData();
+    } catch (e) {
+      addToast('Failed to delete', 'error');
+    }
+  };
+
+  if (loading) return <div className="loading-inline"><div className="spinner" /></div>;
+
+  return (
+    <div className="fade-in">
+      <div className="page-header">
+        <h1>Transaction Entry</h1>
+        <p>Record TDS/TCS transactions against registered parties</p>
+      </div>
+
+      {/* Transaction Form */}
+      <div className="card mb-lg">
+        <div className="card-header">
+          <h2 className="card-title">New Transaction</h2>
+        </div>
+        <form onSubmit={handleSubmit}>
+          {/* Party Selection */}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Company / Party Name *</label>
+              <select
+                className="form-select"
+                value={formData.partyId}
+                onChange={(e) => handlePartySelect(e.target.value)}
+                required
+              >
+                <option value="">Select a party...</option>
+                {parties.map(p => (
+                  <option key={p.id} value={p.id}>{p.companyName}</option>
+                ))}
+              </select>
+              {parties.length === 0 && (
+                <div className="form-hint">No parties registered. Go to Party Master to add one.</div>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">PAN No.</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.panNo}
+                readOnly
+                placeholder="Auto-filled"
+                style={{ opacity: 0.7 }}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Name as per PAN</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.nameAsPerPan}
+                readOnly
+                placeholder="Auto-filled"
+                style={{ opacity: 0.7 }}
+              />
+            </div>
+          </div>
+
+          {/* Transaction Details */}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Payment Date *</label>
+              <input
+                type="date"
+                className="form-input"
+                value={formData.paymentDate}
+                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Bill No. *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Enter bill number"
+                value={formData.billNo}
+                onChange={(e) => setFormData({ ...formData, billNo: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Work / Category *</label>
+              <select
+                className="form-select"
+                value={formData.workCategory}
+                onChange={(e) => setFormData({ ...formData, workCategory: e.target.value })}
+                required
+              >
+                <option value="">Select category...</option>
+                {categories.work.map(c => (
+                  <option key={c.id} value={c.value}>{c.value}</option>
+                ))}
+              </select>
+              {categories.work.length === 0 && (
+                <div className="form-hint">Add categories in Settings</div>
+              )}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Taxable Amount *</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="0.00"
+                value={formData.taxableAmount}
+                onChange={(e) => setFormData({ ...formData, taxableAmount: e.target.value })}
+                required
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">TDS Category *</label>
+              <select
+                className="form-select"
+                value={formData.tdsCategory}
+                onChange={(e) => setFormData({ ...formData, tdsCategory: e.target.value })}
+                required
+              >
+                <option value="">Select TDS category...</option>
+                {categories.tdsCategory.map(c => (
+                  <option key={c.id} value={c.value}>{c.value}</option>
+                ))}
+              </select>
+              {categories.tdsCategory.length === 0 && (
+                <div className="form-hint">Add TDS categories in Settings</div>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">TDS % *</label>
+              <select
+                className="form-select"
+                value={formData.tdsPercent}
+                onChange={(e) => setFormData({ ...formData, tdsPercent: e.target.value })}
+                required
+              >
+                <option value="">Select %...</option>
+                {categories.tdsPercent.map(c => (
+                  <option key={c.id} value={c.value}>{c.value}%</option>
+                ))}
+              </select>
+              {categories.tdsPercent.length === 0 && (
+                <div className="form-hint">Add TDS % in Settings</div>
+              )}
+            </div>
+          </div>
+
+          {/* Computed TDS Amount */}
+          <div className="form-row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="form-group">
+              <label className="form-label">TDS Amount (Auto-calculated)</label>
+              <div className="computed-field">
+                <span className="computed-label">Taxable × TDS%</span>
+                <span className="computed-value">{formatCurrency(tdsAmount)}</span>
+              </div>
+            </div>
+            <div></div>
+            <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button type="submit" className="btn btn-primary w-full" disabled={saving}>
+                {saving ? 'Saving...' : '+ Add Transaction'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Recent Transactions */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">All Transactions</h2>
+          <span className="text-muted" style={{ fontSize: '13px' }}>
+            {transactions.length} entries
+          </span>
+        </div>
+        <div className="table-container" style={{ border: 'none' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Party</th>
+                <th>PAN</th>
+                <th>Date</th>
+                <th>Bill No.</th>
+                <th>Work</th>
+                <th>Taxable Amt</th>
+                <th>TDS Cat.</th>
+                <th>TDS %</th>
+                <th>TDS Amt</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.length === 0 ? (
+                <tr>
+                  <td colSpan="12">
+                    <div className="table-empty">
+                      <div className="table-empty-icon">📝</div>
+                      <div className="table-empty-text">No transactions yet. Use the form above to add one.</div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((t, i) => (
+                  <tr key={t.id}>
+                    <td className="text-muted">{i + 1}</td>
+                    <td style={{ fontWeight: 500 }}>{t.companyName}</td>
+                    <td className="font-mono" style={{ fontSize: '12px' }}>{t.panNo}</td>
+                    <td>{formatDate(t.paymentDate)}</td>
+                    <td className="font-mono">{t.billNo}</td>
+                    <td><span className="badge badge-purple">{t.workCategory}</span></td>
+                    <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
+                    <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
+                    <td className="text-center">{t.tdsPercent}%</td>
+                    <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(t.tdsAmount)}</td>
+                    <td>
+                      {t.challanNo ? (
+                        <span className="badge badge-green">Paid</span>
+                      ) : t.forPayment ? (
+                        <span className="badge badge-amber">Marked</span>
+                      ) : (
+                        <span className="badge badge-red">Pending</span>
+                      )}
+                    </td>
+                    <td>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(t)} title="Delete">
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
