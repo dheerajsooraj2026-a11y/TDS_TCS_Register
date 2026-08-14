@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 
 export default function LoginPage() {
-  const { login, register, user } = useAuth();
+  const { login, register, user, isConfigured } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,12 +25,15 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    const cleanEmail = email.trim();
+    const cleanPassword = password;
+
     try {
       if (isRegister) {
-        await register(email, password);
+        await register(cleanEmail, cleanPassword);
         addToast('Account created successfully!', 'success');
       } else {
-        await login(email, password);
+        await login(cleanEmail, cleanPassword);
         addToast('Welcome back!', 'success');
       }
       router.push('/');
@@ -52,6 +56,24 @@ export default function LoginPage() {
             : 'Sign in to your TDS/TCS Register'}
         </p>
 
+        {!isConfigured && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '16px',
+            fontSize: '13px',
+            color: '#fca5a5',
+            lineHeight: 1.5
+          }}>
+            <strong>⚠️ Supabase Not Connected</strong>
+            <p style={{ marginTop: '4px', margin: 0 }}>
+              Environment variables (<code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>) are missing in this environment.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="email">Email Address</label>
@@ -69,17 +91,37 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label className="form-label" htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              className="form-input"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete={isRegister ? 'new-password' : 'current-password'}
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="form-input"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+                style={{ paddingRight: '42px', width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  padding: '4px'
+                }}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? '👁️' : '🙈'}
+              </button>
+            </div>
           </div>
 
           {error && <p className="form-error mb-md">{error}</p>}
@@ -106,3 +148,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
