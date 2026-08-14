@@ -17,6 +17,7 @@ export default function PaymentReportPage() {
   const [challanData, setChallanData] = useState({ challanNo: '', challanDate: '' });
   const [challanFile, setChallanFile] = useState(null);
   const [savingChallan, setSavingChallan] = useState(false);
+  const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB
 
   useEffect(() => {
     if (!user) return;
@@ -143,7 +144,7 @@ export default function PaymentReportPage() {
             <p>Payment date-wise listing — tick items for payment and record challans</p>
           </div>
           <div className="flex gap-md">
-            <button className="btn btn-secondary" onClick={exportToExcel}>
+            <button className="btn btn-secondary" onClick={exportToExcel} disabled={sorted.length === 0}>
               📥 Export Excel
             </button>
             <button className="btn btn-primary" onClick={openChallanModal}>
@@ -313,7 +314,15 @@ export default function PaymentReportPage() {
                       type="file"
                       id="challan-pdf"
                       accept=".pdf"
-                      onChange={(e) => setChallanFile(e.target.files[0])}
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file && file.size > MAX_PDF_SIZE) {
+                          addToast('File size exceeds 10MB limit', 'warning');
+                          e.target.value = '';
+                          return;
+                        }
+                        setChallanFile(file);
+                      }}
                     />
                     <div className="file-upload-icon">📄</div>
                     <div className="file-upload-text">

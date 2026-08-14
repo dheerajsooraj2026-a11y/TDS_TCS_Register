@@ -80,6 +80,17 @@ export default function TransactionsPage() {
     e.preventDefault();
     setSaving(true);
 
+    // Warn if duplicate bill number for same party
+    const duplicate = transactions.find(
+      t => t.panNo === formData.panNo && t.billNo === formData.billNo
+    );
+    if (duplicate) {
+      if (!confirm(`Bill No. "${formData.billNo}" already exists for this party. Add anyway?`)) {
+        setSaving(false);
+        return;
+      }
+    }
+
     try {
       await addTransaction(user.id, {
         partyId: formData.partyId,

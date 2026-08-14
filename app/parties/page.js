@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getParties, addParty, updateParty, deleteParty, checkPanExists } from '@/lib/db';
+import { getParties, addParty, updateParty, deleteParty, checkPanExists, getTransactions } from '@/lib/db';
 import { useToast } from '@/components/Toast';
 
 export default function PartiesPage() {
@@ -99,8 +99,18 @@ export default function PartiesPage() {
   };
 
   const handleDelete = async (party) => {
-    if (!confirm(`Delete "${party.companyName}"? This action cannot be undone.`)) return;
     try {
+      // Check if party has linked transactions
+      const allTransactions = await getTransactions(user.id);
+      const linked = allTransactions.filter(t => t.panNo === party.panNo);
+      
+      let confirmMsg = `Delete "${party.companyName}"? This action cannot be undone.`;
+      if (linked.length > 0) {
+        confirmMsg = `Delete "${party.companyName}"?\n\n⚠️ This party has ${linked.length} linked transaction(s). The transactions will be kept but will lose their party link.\n\nThis action cannot be undone.`;
+      }
+      
+      if (!confirm(confirmMsg)) return;
+      
       await deleteParty(party.id);
       addToast('Party deleted', 'success');
       loadParties();

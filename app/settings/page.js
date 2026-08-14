@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getCategories, addCategory, deleteCategory } from '@/lib/db';
+import { getCategories, addCategory, deleteCategory, getTransactions } from '@/lib/db';
 import { useToast } from '@/components/Toast';
 
 const categoryTypes = [
@@ -87,6 +87,18 @@ export default function SettingsPage() {
 
   const handleDelete = async (id, type) => {
     try {
+      // Check if this category value is used in any transaction
+      const cat = categories[type].find(c => c.id === id);
+      if (cat) {
+        const allTransactions = await getTransactions(user.id);
+        const fieldMap = { work: 'workCategory', tdsCategory: 'tdsCategory', tdsPercent: 'tdsPercent' };
+        const field = fieldMap[type];
+        const inUse = allTransactions.filter(t => String(t[field]) === String(cat.value));
+        if (inUse.length > 0) {
+          if (!confirm(`"${cat.value}" is used in ${inUse.length} transaction(s). Remove anyway?`)) return;
+        }
+      }
+
       await deleteCategory(id);
       addToast('Category removed', 'success');
       loadCategories();

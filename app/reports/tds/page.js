@@ -75,7 +75,7 @@ export default function TDSReportPage() {
             <h1>Monthly TDS Report</h1>
             <p>Challan date-wise listing of all paid TDS transactions</p>
           </div>
-          <button className="btn btn-secondary" onClick={exportToExcel}>
+          <button className="btn btn-secondary" onClick={exportToExcel} disabled={sorted.length === 0}>
             📥 Export Excel
           </button>
         </div>
