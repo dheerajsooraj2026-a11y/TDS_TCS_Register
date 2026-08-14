@@ -15,19 +15,18 @@ export default function TDSReportPage() {
 
   useEffect(() => {
     if (!user) return;
-    loadTransactions();
-  }, [user]);
-
-  async function loadTransactions() {
-    try {
-      const data = await getTransactions(user.id);
-      setTransactions(data);
-    } catch (e) {
-      addToast('Failed to load transactions', 'error');
-    } finally {
-      setLoading(false);
+    async function load() {
+      try {
+        const data = await getTransactions(user.id);
+        setTransactions(data);
+      } catch (e) {
+        addToast('Failed to load transactions', 'error');
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+    load();
+  }, [user]);
 
   // Only show transactions with challan info (paid)
   const paidTransactions = transactions.filter(t => t.challanNo);
