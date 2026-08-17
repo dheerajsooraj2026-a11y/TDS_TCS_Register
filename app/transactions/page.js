@@ -6,13 +6,19 @@ import { useToast } from '@/components/Toast';
 import { formatCurrency, formatDate, calculateTDS } from '@/lib/utils';
 
 export default function TransactionsPage() {
-  const { user } = useAuth();
+  const { user, verifyPassword } = useAuth();
   const { addToast } = useToast();
   const [parties, setParties] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState({ work: [], tdsCategory: [], tdsPercent: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Guarded delete state for paid transactions
+  const [deletingTransaction, setDeletingTransaction] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     partyId: '',
@@ -126,14 +132,51 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleDelete = async (t) => {
-    if (!confirm(`Delete transaction for "${t.companyName}" - Bill ${t.billNo}?`)) return;
+  const handleDeleteClick = (t) => {
+    if (t.challanNo) {
+      // Guarded: Paid transaction requires account password verification
+      setDeletingTransaction(t);
+      setDeletePassword('');
+      setDeleteError('');
+    } else {
+      handleDeleteUnpaid(t);
+    }
+  };
+
+  const handleDeleteUnpaid = async (t) => {
+    if (!confirm(`Delete unpaid transaction for "${t.companyName}" (Bill ${t.billNo})?`)) return;
     try {
       await deleteTransaction(t.id);
       addToast('Transaction deleted', 'success');
       loadData();
     } catch (e) {
-      addToast('Failed to delete', 'error');
+      addToast('Failed to delete transaction', 'error');
+    }
+  };
+
+  const handleConfirmPaidDelete = async (e) => {
+    e.preventDefault();
+    if (!deletePassword) {
+      setDeleteError('Please enter your account password.');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError('');
+
+    try {
+      // Verify account password
+      await verifyPassword(deletePassword);
+      
+      // Delete the paid transaction
+      await deleteTransaction(deletingTransaction.id);
+      addToast(`Paid transaction for "${deletingTransaction.companyName}" deleted successfully`, 'success');
+      setDeletingTransaction(null);
+      setDeletePassword('');
+      loadData();
+    } catch (err) {
+      setDeleteError(err.message || 'Incorrect password. Deletion unauthorized.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -365,7 +408,7 @@ export default function TransactionsPage() {
                       )}
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(t)} title="Delete">
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleDeleteClick(t)} title="Delete">
                         🗑️
                       </button>
                     </td>
@@ -376,6 +419,93 @@ export default function TransactionsPage() {
           </table>
         </div>
       </div>
+
+      {/* Guarded Delete Modal for Paid Transactions */}
+      {deletingTransaction && (
+        <div className="modal-overlay" onClick={() => !deleting && setDeletingTransaction(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-danger)' }}>
+                <span>🔒</span> Guarded Action: Delete Paid Transaction
+              </h2>
+              <button
+                className="modal-close"
+                onClick={() => !deleting && setDeletingTransaction(null)}
+                disabled={deleting}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleConfirmPaidDelete}>
+              <div className="modal-body">
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-md)',
+                  marginBottom: 'var(--space-lg)'
+                }}>
+                  <div style={{ fontWeight: 600, color: 'var(--accent-danger)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    ⚠️ Report Impact Warning
+                  </div>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '10px' }}>
+                    This transaction has already been marked as <strong>PAID</strong> with Challan details. Deleting it will permanently remove it from your <strong>TDS Report</strong> and <strong>Payment History</strong>.
+                  </p>
+                  <div style={{ fontSize: '12px', background: 'rgba(0, 0, 0, 0.25)', padding: '10px', borderRadius: 'var(--radius-sm)', lineHeight: '1.6' }}>
+                    <div><strong>Party:</strong> {deletingTransaction.companyName}</div>
+                    <div><strong>Bill No:</strong> {deletingTransaction.billNo} | <strong>Taxable Amt:</strong> {formatCurrency(deletingTransaction.taxableAmount)}</div>
+                    <div><strong>TDS Amount:</strong> {formatCurrency(deletingTransaction.tdsAmount)} ({deletingTransaction.tdsPercent}% - {deletingTransaction.tdsCategory})</div>
+                    <div><strong>Challan No:</strong> {deletingTransaction.challanNo} | <strong>Challan Date:</strong> {formatDate(deletingTransaction.challanDate)}</div>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Enter Account Password to Authorize Deletion *
+                  </label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Enter your account password"
+                    value={deletePassword}
+                    onChange={(e) => {
+                      setDeletePassword(e.target.value);
+                      if (deleteError) setDeleteError('');
+                    }}
+                    required
+                    autoFocus
+                  />
+                  <div className="form-hint">
+                    Account: <strong>{user?.email}</strong>. Password verification protects against accidental deletion of reconciled tax data.
+                  </div>
+                  {deleteError && (
+                    <p className="form-error" style={{ marginTop: '8px', color: 'var(--accent-danger)' }}>
+                      ❌ {deleteError}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDeletingTransaction(null)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-danger"
+                  disabled={deleting || !deletePassword}
+                >
+                  {deleting ? 'Verifying & Deleting...' : '🔒 Delete Paid Transaction'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
