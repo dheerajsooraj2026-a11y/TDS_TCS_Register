@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
@@ -15,8 +15,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (user) router.push('/');
+  }, [user, router]);
+
   if (user) {
-    router.push('/');
     return null;
   }
 

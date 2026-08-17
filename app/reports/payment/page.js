@@ -48,10 +48,11 @@ export default function PaymentReportPage() {
   const sorted = [...filtered].sort((a, b) => (a.paymentDate || '').localeCompare(b.paymentDate || ''));
 
   const handleTickPayment = async (t) => {
+    const next = !t.forPayment;
     try {
-      await markForPayment(t.id, !t.forPayment);
+      await markForPayment(t.id, next);
       setTransactions(prev =>
-        prev.map(tr => tr.id === t.id ? { ...tr, forPayment: !tr.forPayment } : tr)
+        prev.map(tr => tr.id === t.id ? { ...tr, forPayment: next } : tr)
       );
     } catch (e) {
       addToast('Failed to update', 'error');
@@ -102,7 +103,8 @@ export default function PaymentReportPage() {
       setShowChallanModal(false);
       loadTransactions();
     } catch (e) {
-      addToast('Failed to save challan details', 'error');
+      addToast('Failed to save challan details — some transactions may already be updated, please check below', 'error');
+      loadTransactions();
     } finally {
       setSavingChallan(false);
     }

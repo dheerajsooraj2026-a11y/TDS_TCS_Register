@@ -49,6 +49,7 @@ export default function TDSReportPage() {
       'Company/Party Name': t.companyName,
       'Name as per PAN': t.nameAsPerPan,
       'PAN': t.panNo,
+      'Work/Category': t.workCategory,
       'Payment Date': t.paymentDate,
       'Taxable Amount': t.taxableAmount,
       'TDS Category': t.tdsCategory,
@@ -137,6 +138,7 @@ export default function TDSReportPage() {
               <th>Party</th>
               <th>Name as per PAN</th>
               <th>PAN</th>
+              <th>Work</th>
               <th>Payment Date</th>
               <th>Taxable Amt</th>
               <th>TDS Cat.</th>
@@ -150,7 +152,7 @@ export default function TDSReportPage() {
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan="12">
+                <td colSpan="13">
                   <div className="table-empty">
                     <div className="table-empty-icon">📋</div>
                     <div className="table-empty-text">
@@ -166,6 +168,7 @@ export default function TDSReportPage() {
                   <td style={{ fontWeight: 500 }}>{t.companyName}</td>
                   <td>{t.nameAsPerPan}</td>
                   <td className="font-mono" style={{ fontSize: '12px' }}>{t.panNo}</td>
+                  <td><span className="badge badge-purple">{t.workCategory}</span></td>
                   <td>{formatDate(t.paymentDate)}</td>
                   <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
                   <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
