@@ -165,6 +165,11 @@ export default function PaymentReportPage() {
             className="form-input"
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
+            onClick={(e) => {
+              try {
+                e.target.showPicker();
+              } catch (err) {}
+            }}
             style={{ maxWidth: '200px' }}
           />
         </div>
@@ -301,6 +306,11 @@ export default function PaymentReportPage() {
                       className="form-input"
                       value={challanData.challanDate}
                       onChange={(e) => setChallanData({ ...challanData, challanDate: e.target.value })}
+                      onClick={(e) => {
+                        try {
+                          e.target.showPicker();
+                        } catch (err) {}
+                      }}
                       required
                     />
                   </div>

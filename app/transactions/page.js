@@ -247,6 +247,11 @@ export default function TransactionsPage() {
                 className="form-input"
                 value={formData.paymentDate}
                 onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                onClick={(e) => {
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {}
+                }}
                 required
               />
             </div>

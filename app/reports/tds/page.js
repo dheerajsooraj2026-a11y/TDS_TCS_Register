@@ -91,6 +91,11 @@ export default function TDSReportPage() {
             className="form-input"
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
+            onClick={(e) => {
+              try {
+                e.target.showPicker();
+              } catch (err) {}
+            }}
             style={{ maxWidth: '200px' }}
           />
         </div>
