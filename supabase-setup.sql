@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   payment_date DATE NOT NULL,
   bill_no TEXT NOT NULL,
   work_category TEXT NOT NULL,
+  total_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
   taxable_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
   tds_category TEXT NOT NULL,
   tds_percent NUMERIC(5, 2) NOT NULL DEFAULT 0,
@@ -41,6 +42,10 @@ CREATE TABLE IF NOT EXISTS transactions (
   challan_pdf_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Ensure total_amount column exists if table was already created
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS total_amount NUMERIC(15, 2) DEFAULT 0;
+
 
 -- 3. Categories Table (Settings)
 CREATE TABLE IF NOT EXISTS categories (

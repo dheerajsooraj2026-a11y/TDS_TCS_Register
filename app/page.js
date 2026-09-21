@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const pendingPayments = transactions.filter(t => !t.forPayment && !t.challanNo).length;
   const totalTDS = transactions.reduce((sum, t) => sum + (t.tdsAmount || 0), 0);
   const totalTaxable = transactions.reduce((sum, t) => sum + (t.taxableAmount || 0), 0);
+  const totalAmount = transactions.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
   const recentTransactions = transactions.slice(0, 8);
 
   return (
@@ -77,6 +78,12 @@ export default function DashboardPage() {
           <div className="stat-value">{formatCurrency(totalTaxable)}</div>
           <div className="stat-label">Total Taxable Amount</div>
         </div>
+
+        <div className="stat-card">
+          <div className="stat-icon amber">💵</div>
+          <div className="stat-value">{formatCurrency(totalAmount)}</div>
+          <div className="stat-label">Total Amount</div>
+        </div>
       </div>
 
       <div className="card">
@@ -104,6 +111,7 @@ export default function DashboardPage() {
                   <th>Payment Date</th>
                   <th>Bill No.</th>
                   <th>Category</th>
+                  <th>Total Amt</th>
                   <th>Taxable Amt</th>
                   <th>TDS</th>
                   <th>Status</th>
@@ -116,6 +124,7 @@ export default function DashboardPage() {
                     <td>{formatDate(t.paymentDate)}</td>
                     <td className="font-mono">{t.billNo}</td>
                     <td><span className="badge badge-purple">{t.workCategory}</span></td>
+                    <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                     <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
                     <td className="text-right">{formatCurrency(t.tdsAmount)}</td>
                     <td>

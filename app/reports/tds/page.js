@@ -42,6 +42,7 @@ export default function TDSReportPage() {
 
   const totalTDS = sorted.reduce((s, t) => s + (t.tdsAmount || 0), 0);
   const totalTaxable = sorted.reduce((s, t) => s + (t.taxableAmount || 0), 0);
+  const totalAmount = sorted.reduce((s, t) => s + (t.totalAmount || 0), 0);
 
   const exportToExcel = () => {
     const data = sorted.map((t, i) => ({
@@ -51,6 +52,7 @@ export default function TDSReportPage() {
       'PAN': t.panNo,
       'Work/Category': t.workCategory,
       'Payment Date': t.paymentDate,
+      'Total Amount': t.totalAmount || 0,
       'Taxable Amount': t.taxableAmount,
       'TDS Category': t.tdsCategory,
       'TDS %': t.tdsPercent,
@@ -129,6 +131,11 @@ export default function TDSReportPage() {
           <div className="stat-label">Total Taxable Amount</div>
         </div>
         <div className="stat-card">
+          <div className="stat-icon amber">💵</div>
+          <div className="stat-value">{formatCurrency(totalAmount)}</div>
+          <div className="stat-label">Total Amount</div>
+        </div>
+        <div className="stat-card">
           <div className="stat-icon purple">📋</div>
           <div className="stat-value">{sorted.length}</div>
           <div className="stat-label">Transactions</div>
@@ -146,6 +153,7 @@ export default function TDSReportPage() {
               <th>PAN</th>
               <th>Work</th>
               <th>Payment Date</th>
+              <th>Total Amt</th>
               <th>Taxable Amt</th>
               <th>TDS Cat.</th>
               <th>TDS %</th>
@@ -158,7 +166,7 @@ export default function TDSReportPage() {
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan="13">
+                <td colSpan="14">
                   <div className="table-empty">
                     <div className="table-empty-icon">📋</div>
                     <div className="table-empty-text">
@@ -176,6 +184,7 @@ export default function TDSReportPage() {
                   <td className="font-mono" style={{ fontSize: '12px' }}>{t.panNo}</td>
                   <td><span className="badge badge-purple">{t.workCategory}</span></td>
                   <td>{formatDate(t.paymentDate)}</td>
+                  <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                   <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
                   <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
                   <td className="text-center">{t.tdsPercent}%</td>

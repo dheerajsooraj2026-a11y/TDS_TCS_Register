@@ -28,6 +28,7 @@ export default function TransactionsPage() {
     paymentDate: '',
     billNo: '',
     workCategory: '',
+    totalAmount: '',
     taxableAmount: '',
     tdsCategory: '',
     tdsPercent: '',
@@ -106,6 +107,7 @@ export default function TransactionsPage() {
         paymentDate: formData.paymentDate,
         billNo: formData.billNo,
         workCategory: formData.workCategory,
+        totalAmount: formData.totalAmount ? parseFloat(formData.totalAmount) : 0,
         taxableAmount: parseFloat(formData.taxableAmount),
         tdsCategory: formData.tdsCategory,
         tdsPercent: parseFloat(formData.tdsPercent),
@@ -119,6 +121,7 @@ export default function TransactionsPage() {
         paymentDate: '',
         billNo: '',
         workCategory: '',
+        totalAmount: '',
         taxableAmount: '',
         tdsCategory: '',
         tdsPercent: '',
@@ -287,6 +290,18 @@ export default function TransactionsPage() {
 
           <div className="form-row">
             <div className="form-group">
+              <label className="form-label">Total Amount</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="0.00"
+                value={formData.totalAmount}
+                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="form-group">
               <label className="form-label">Taxable Amount *</label>
               <input
                 type="number"
@@ -372,6 +387,7 @@ export default function TransactionsPage() {
                 <th>Date</th>
                 <th>Bill No.</th>
                 <th>Work</th>
+                <th>Total Amt</th>
                 <th>Taxable Amt</th>
                 <th>TDS Cat.</th>
                 <th>TDS %</th>
@@ -383,7 +399,7 @@ export default function TransactionsPage() {
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan="12">
+                  <td colSpan="13">
                     <div className="table-empty">
                       <div className="table-empty-icon">📝</div>
                       <div className="table-empty-text">No transactions yet. Use the form above to add one.</div>
@@ -399,6 +415,7 @@ export default function TransactionsPage() {
                     <td>{formatDate(t.paymentDate)}</td>
                     <td className="font-mono">{t.billNo}</td>
                     <td><span className="badge badge-purple">{t.workCategory}</span></td>
+                    <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                     <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
                     <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
                     <td className="text-center">{t.tdsPercent}%</td>

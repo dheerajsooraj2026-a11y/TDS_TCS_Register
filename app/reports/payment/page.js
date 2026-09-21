@@ -152,6 +152,7 @@ export default function PaymentReportPage() {
       'Work/Category': t.workCategory,
       'Payment Date': t.paymentDate,
       'Bill No.': t.billNo,
+      'Total Amount': t.totalAmount || 0,
       'Taxable Amount': t.taxableAmount,
       'TDS Category': t.tdsCategory,
       'TDS %': t.tdsPercent,
@@ -234,6 +235,7 @@ export default function PaymentReportPage() {
               <th>Work</th>
               <th>Date</th>
               <th>Bill No.</th>
+              <th>Total Amt</th>
               <th>Taxable Amt</th>
               <th>TDS Cat.</th>
               <th>TDS %</th>
@@ -243,7 +245,7 @@ export default function PaymentReportPage() {
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan="11">
+                <td colSpan="12">
                   <div className="table-empty">
                     <div className="table-empty-icon">💳</div>
                     <div className="table-empty-text">No pending transactions found</div>
@@ -269,6 +271,7 @@ export default function PaymentReportPage() {
                   <td><span className="badge badge-purple">{t.workCategory}</span></td>
                   <td>{formatDate(t.paymentDate)}</td>
                   <td className="font-mono">{t.billNo}</td>
+                  <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                   <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
                   <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
                   <td className="text-center">{t.tdsPercent}%</td>
