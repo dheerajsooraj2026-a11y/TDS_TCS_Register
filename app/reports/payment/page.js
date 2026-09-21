@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getTransactions, markForPayment, updateChallanInfo, uploadChallanPdf } from '@/lib/db';
 import { useToast } from '@/components/Toast';
@@ -16,7 +16,9 @@ export default function PaymentReportPage() {
   const [selectedForChallan, setSelectedForChallan] = useState([]);
   const [challanData, setChallanData] = useState({ challanNo: '', challanDate: '' });
   const [challanFile, setChallanFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [savingChallan, setSavingChallan] = useState(false);
+  const fileInputRef = useRef(null);
   const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB
 
   useEffect(() => {
@@ -72,6 +74,28 @@ export default function PaymentReportPage() {
     groupedSummary[key].count += 1;
   });
 
+  const handleFileSelect = (file) => {
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      addToast('Please upload a PDF file only', 'warning');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size > MAX_PDF_SIZE) {
+      addToast('File size exceeds 10MB limit', 'warning');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    setChallanFile(file);
+  };
+
+  const handleRemoveFile = () => {
+    setChallanFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const openChallanModal = () => {
     if (markedItems.length === 0) {
       addToast('Please tick at least one transaction for payment', 'warning');
@@ -79,7 +103,7 @@ export default function PaymentReportPage() {
     }
     setSelectedForChallan(markedItems.map(t => t.id));
     setChallanData({ challanNo: '', challanDate: '' });
-    setChallanFile(null);
+    handleRemoveFile();
     setShowChallanModal(true);
   };
 
@@ -88,10 +112,17 @@ export default function PaymentReportPage() {
     setSavingChallan(true);
 
     try {
-      let pdfUrl = null;
+      let pdfUrl = undefined;
       if (challanFile) {
-        // Upload PDF for the first selected transaction (shared)
-        pdfUrl = await uploadChallanPdf(user.id, challanFile, selectedForChallan[0]);
+        try {
+          // Upload PDF for the first selected transaction (shared)
+          pdfUrl = await uploadChallanPdf(user.id, challanFile, selectedForChallan[0]);
+        } catch (uploadErr) {
+          console.error('PDF upload error:', uploadErr);
+          addToast(uploadErr.message || 'Failed to upload PDF', 'error');
+          setSavingChallan(false);
+          return;
+        }
       }
 
       // Update all selected transactions
@@ -101,9 +132,11 @@ export default function PaymentReportPage() {
 
       addToast('Challan details saved successfully', 'success');
       setShowChallanModal(false);
+      handleRemoveFile();
       loadTransactions();
     } catch (e) {
-      addToast('Failed to save challan details — some transactions may already be updated, please check below', 'error');
+      console.error('Failed to save challan details:', e);
+      addToast(e.message || 'Failed to save challan details', 'error');
       loadTransactions();
     } finally {
       setSavingChallan(false);
@@ -319,26 +352,33 @@ export default function PaymentReportPage() {
                 <div className="form-group">
                   <label className="form-label">Challan PDF (Optional)</label>
                   <div
-                    className="file-upload"
-                    onClick={() => document.getElementById('challan-pdf').click()}
+                    className={`file-upload ${isDragging ? 'drag-active' : ''}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const file = e.dataTransfer?.files?.[0];
+                      handleFileSelect(file);
+                    }}
                   >
                     <input
+                      ref={fileInputRef}
                       type="file"
                       id="challan-pdf"
-                      accept=".pdf"
+                      accept=".pdf,application/pdf"
                       onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file && file.size > MAX_PDF_SIZE) {
-                          addToast('File size exceeds 10MB limit', 'warning');
-                          e.target.value = '';
-                          return;
-                        }
-                        setChallanFile(file);
+                        const file = e.target.files?.[0];
+                        handleFileSelect(file);
                       }}
                     />
                     <div className="file-upload-icon">📄</div>
                     <div className="file-upload-text">
-                      {challanFile ? challanFile.name : 'Click to upload challan PDF'}
+                      {challanFile ? challanFile.name : 'Click or drag & drop to upload challan PDF'}
                     </div>
                     <div className="file-upload-hint">PDF files only, max 10MB</div>
                   </div>
@@ -349,7 +389,8 @@ export default function PaymentReportPage() {
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm"
-                        onClick={() => setChallanFile(null)}
+                        onClick={handleRemoveFile}
+                        title="Remove file"
                       >
                         ✕
                       </button>

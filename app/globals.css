@@ -1165,9 +1165,10 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   transition: all var(--transition-fast);
 }
 
-.file-upload:hover {
-  border-color: var(--border-focus);
-  background: rgba(59, 130, 246, 0.03);
+.file-upload:hover,
+.file-upload.drag-active {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .file-upload input[type="file"] {

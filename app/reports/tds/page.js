@@ -57,6 +57,7 @@ export default function TDSReportPage() {
       'TDS Amount': t.tdsAmount,
       'Challan No.': t.challanNo,
       'Challan Date': t.challanDate,
+      'Challan PDF Link': t.challanPdfUrl || '—',
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);

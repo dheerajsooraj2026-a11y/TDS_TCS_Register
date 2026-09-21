@@ -105,6 +105,44 @@ CREATE POLICY "Users can update own categories" ON categories
 CREATE POLICY "Users can delete own categories" ON categories
   FOR DELETE USING (auth.uid() = user_id);
 
--- 5. Storage bucket for challan PDFs (optional)
--- Go to Supabase Dashboard → Storage → Create bucket named "challans"
--- Set it to public bucket for easy PDF access
+-- 5. Storage bucket for challan PDFs
+-- Create the public 'challans' bucket if not already present
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'challans',
+  'challans',
+  true,
+  10485760, -- 10MB file limit
+  ARRAY['application/pdf']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 10485760,
+  allowed_mime_types = ARRAY['application/pdf'];
+
+-- Clean up existing storage policies if they exist (makes the script re-runnable/idempotent)
+DROP POLICY IF EXISTS "Authenticated users can upload challans" ON storage.objects;
+DROP POLICY IF EXISTS "Public read access for challans" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own challans" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own challans" ON storage.objects;
+
+-- Allow authenticated users to upload challan PDFs to the 'challans' bucket
+CREATE POLICY "Authenticated users can upload challans"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'challans');
+
+-- Allow public read access to view/download challans
+CREATE POLICY "Public read access for challans"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'challans');
+
+-- Allow authenticated users to update files in 'challans'
+CREATE POLICY "Users can update own challans"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'challans');
+
+-- Allow authenticated users to delete files in 'challans'
+CREATE POLICY "Users can delete own challans"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'challans');
+
