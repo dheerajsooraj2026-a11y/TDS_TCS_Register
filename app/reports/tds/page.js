@@ -52,8 +52,9 @@ export default function TDSReportPage() {
       'PAN': t.panNo,
       'Work/Category': t.workCategory,
       'Payment Date': t.paymentDate,
-      'Total Amount': t.totalAmount || 0,
+      'Bill No.': t.billNo,
       'Taxable Amount': t.taxableAmount,
+      'Total Amount': t.totalAmount || 0,
       'TDS Category': t.tdsCategory,
       'TDS %': t.tdsPercent,
       'TDS Amount': t.tdsAmount,
@@ -153,11 +154,12 @@ export default function TDSReportPage() {
               <th>PAN</th>
               <th>Work</th>
               <th>Payment Date</th>
-              <th>Total Amt</th>
-              <th>Taxable Amt</th>
+              <th>Bill No.</th>
+              <th className="text-right">Taxable Amt</th>
+              <th className="text-right">Total Amt</th>
               <th>TDS Cat.</th>
               <th>TDS %</th>
-              <th>TDS Amount</th>
+              <th className="text-right">TDS Amount</th>
               <th>Challan No.</th>
               <th>Challan Date</th>
               <th>PDF</th>
@@ -166,7 +168,7 @@ export default function TDSReportPage() {
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan="14">
+                <td colSpan="15">
                   <div className="table-empty">
                     <div className="table-empty-icon">📋</div>
                     <div className="table-empty-text">
@@ -184,8 +186,9 @@ export default function TDSReportPage() {
                   <td className="font-mono" style={{ fontSize: '12px' }}>{t.panNo}</td>
                   <td><span className="badge badge-purple">{t.workCategory}</span></td>
                   <td>{formatDate(t.paymentDate)}</td>
-                  <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
+                  <td className="font-mono">{t.billNo}</td>
                   <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
+                  <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                   <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
                   <td className="text-center">{t.tdsPercent}%</td>
                   <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(t.tdsAmount)}</td>

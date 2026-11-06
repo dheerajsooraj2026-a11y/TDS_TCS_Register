@@ -882,6 +882,105 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
   padding-left: 38px;
 }
 
+/* ─── Party Search / Autocomplete ───────────────────────────────────────────── */
+.party-combobox {
+  position: relative;
+  width: 100%;
+}
+
+.party-combobox .combobox-input {
+  width: 100%;
+  padding-left: 38px;
+  padding-right: 36px;
+}
+
+.party-combobox .combobox-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.party-combobox .combobox-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.party-combobox .combobox-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.party-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.party-dropdown-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--border-default);
+  transition: background var(--transition-fast);
+}
+
+.party-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.party-dropdown-item:hover,
+.party-dropdown-item.selected {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.party-dropdown-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.party-dropdown-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+}
+
+.party-dropdown-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
 /* ─── Badge ─────────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;

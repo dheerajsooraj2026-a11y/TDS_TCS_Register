@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getTransactions, markForPayment, updateChallanInfo, uploadChallanPdf } from '@/lib/db';
+import { getTransactions, markForPayment, markMultipleForPayment, updateChallanInfo, uploadChallanPdf } from '@/lib/db';
 import { useToast } from '@/components/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -48,6 +48,39 @@ export default function PaymentReportPage() {
 
   // Sort by payment date
   const sorted = [...filtered].sort((a, b) => (a.paymentDate || '').localeCompare(b.paymentDate || ''));
+
+  const allSelected = sorted.length > 0 && sorted.every(t => t.forPayment);
+  const someSelected = sorted.some(t => t.forPayment) && !allSelected;
+  const selectAllCheckboxRef = useRef(null);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = someSelected;
+    }
+  }, [someSelected]);
+
+  const handleSelectAll = async () => {
+    if (sorted.length === 0) return;
+    const targetState = !allSelected;
+    const idsToUpdate = sorted
+      .filter(t => Boolean(t.forPayment) !== targetState)
+      .map(t => t.id);
+
+    if (idsToUpdate.length === 0) return;
+
+    // Optimistic UI update
+    setTransactions(prev =>
+      prev.map(t => idsToUpdate.includes(t.id) ? { ...t, forPayment: targetState } : t)
+    );
+
+    try {
+      await markMultipleForPayment(idsToUpdate, targetState);
+      addToast(targetState ? `Selected all (${idsToUpdate.length}) for payment` : 'Unselected all', 'info');
+    } catch (e) {
+      addToast('Failed to update selection', 'error');
+      loadTransactions();
+    }
+  };
 
   const handleTickPayment = async (t) => {
     const next = !t.forPayment;
@@ -146,18 +179,18 @@ export default function PaymentReportPage() {
   const exportToExcel = () => {
     const data = sorted.map((t, i) => ({
       '#': i + 1,
-      'Company/Party Name': t.companyName,
-      'Name as per PAN': t.nameAsPerPan,
+      'Pay': t.forPayment ? 'Yes' : 'No',
+      'Party': t.companyName,
       'PAN': t.panNo,
-      'Work/Category': t.workCategory,
-      'Payment Date': t.paymentDate,
-      'Bill No.': t.billNo,
-      'Total Amount': t.totalAmount || 0,
       'Taxable Amount': t.taxableAmount,
-      'TDS Category': t.tdsCategory,
-      'TDS %': t.tdsPercent,
+      'Total Amount': t.totalAmount || 0,
       'TDS Amount': t.tdsAmount,
-      'For Payment': t.forPayment ? 'Yes' : 'No',
+      'TDS %': t.tdsPercent,
+      'TDS Category': t.tdsCategory,
+      'Work': t.workCategory,
+      'Bill No.': t.billNo,
+      'Date': t.paymentDate,
+      'Name as per PAN': t.nameAsPerPan,
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -228,18 +261,30 @@ export default function PaymentReportPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ width: '50px' }}>Pay</th>
+              <th style={{ width: '75px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="checkbox"
+                    className="checkbox"
+                    ref={selectAllCheckboxRef}
+                    checked={allSelected}
+                    onChange={handleSelectAll}
+                    title="Select / Unselect All"
+                  />
+                  <span>PAY</span>
+                </div>
+              </th>
               <th>Party</th>
-              <th>Name as per PAN</th>
               <th>PAN</th>
+              <th className="text-right">Taxable Amount</th>
+              <th className="text-right">Total Amount</th>
+              <th className="text-right">TDS Amount</th>
+              <th className="text-center">TDS %</th>
+              <th>TDS Category</th>
               <th>Work</th>
-              <th>Date</th>
               <th>Bill No.</th>
-              <th>Total Amt</th>
-              <th>Taxable Amt</th>
-              <th>TDS Cat.</th>
-              <th>TDS %</th>
-              <th>TDS Amount</th>
+              <th>Date</th>
+              <th>Name as per PAN</th>
             </tr>
           </thead>
           <tbody>
@@ -266,16 +311,16 @@ export default function PaymentReportPage() {
                     </div>
                   </td>
                   <td style={{ fontWeight: 500 }}>{t.companyName}</td>
-                  <td>{t.nameAsPerPan}</td>
                   <td className="font-mono" style={{ fontSize: '12px' }}>{t.panNo}</td>
-                  <td><span className="badge badge-purple">{t.workCategory}</span></td>
-                  <td>{formatDate(t.paymentDate)}</td>
-                  <td className="font-mono">{t.billNo}</td>
-                  <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                   <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
-                  <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
-                  <td className="text-center">{t.tdsPercent}%</td>
+                  <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                   <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(t.tdsAmount)}</td>
+                  <td className="text-center">{t.tdsPercent}%</td>
+                  <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
+                  <td><span className="badge badge-purple">{t.workCategory}</span></td>
+                  <td className="font-mono">{t.billNo}</td>
+                  <td>{formatDate(t.paymentDate)}</td>
+                  <td>{t.nameAsPerPan}</td>
                 </tr>
               ))
             )}

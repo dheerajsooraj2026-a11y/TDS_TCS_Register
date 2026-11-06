@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getParties, getTransactions, addTransaction, deleteTransaction, getCategories } from '@/lib/db';
 import { useToast } from '@/components/Toast';
@@ -20,6 +20,11 @@ export default function TransactionsPage() {
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Party Search / Autocomplete state
+  const [partySearch, setPartySearch] = useState('');
+  const [partyDropdownOpen, setPartyDropdownOpen] = useState(false);
+  const comboboxRef = useRef(null);
+
   const [formData, setFormData] = useState({
     partyId: '',
     companyName: '',
@@ -28,11 +33,22 @@ export default function TransactionsPage() {
     paymentDate: '',
     billNo: '',
     workCategory: '',
-    totalAmount: '',
     taxableAmount: '',
+    totalAmount: '',
     tdsCategory: '',
     tdsPercent: '',
   });
+
+  // Close combobox dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (comboboxRef.current && !comboboxRef.current.contains(event.target)) {
+        setPartyDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -58,8 +74,7 @@ export default function TransactionsPage() {
     }
   }
 
-  const handlePartySelect = (partyId) => {
-    const party = parties.find(p => p.id === partyId);
+  const handlePartySelect = (party) => {
     if (party) {
       setFormData(prev => ({
         ...prev,
@@ -68,6 +83,8 @@ export default function TransactionsPage() {
         panNo: party.panNo,
         nameAsPerPan: party.nameAsPerPan,
       }));
+      setPartySearch(party.companyName);
+      setPartyDropdownOpen(false);
     } else {
       setFormData(prev => ({
         ...prev,
@@ -76,8 +93,20 @@ export default function TransactionsPage() {
         panNo: '',
         nameAsPerPan: '',
       }));
+      setPartySearch('');
+      setPartyDropdownOpen(false);
     }
   };
+
+  const filteredParties = parties.filter(p => {
+    if (!partySearch) return true;
+    const query = partySearch.toLowerCase().trim();
+    return (
+      (p.companyName && p.companyName.toLowerCase().includes(query)) ||
+      (p.panNo && p.panNo.toLowerCase().includes(query)) ||
+      (p.nameAsPerPan && p.nameAsPerPan.toLowerCase().includes(query))
+    );
+  });
 
   const tdsAmount = formData.taxableAmount && formData.tdsPercent
     ? calculateTDS(parseFloat(formData.taxableAmount), parseFloat(formData.tdsPercent))
@@ -85,6 +114,10 @@ export default function TransactionsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.partyId) {
+      addToast('Please search and select a registered party', 'warning');
+      return;
+    }
     setSaving(true);
 
     // Warn if duplicate bill number for same party
@@ -202,17 +235,65 @@ export default function TransactionsPage() {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Company / Party Name *</label>
-              <select
-                className="form-select"
-                value={formData.partyId}
-                onChange={(e) => handlePartySelect(e.target.value)}
-                required
-              >
-                <option value="">Select a party...</option>
-                {parties.map(p => (
-                  <option key={p.id} value={p.id}>{p.companyName}</option>
-                ))}
-              </select>
+              <div className="party-combobox" ref={comboboxRef}>
+                <span className="combobox-icon">🔍</span>
+                <input
+                  type="text"
+                  className="form-input combobox-input"
+                  placeholder="Search by name, PAN..."
+                  value={partySearch}
+                  onChange={(e) => {
+                    setPartySearch(e.target.value);
+                    setPartyDropdownOpen(true);
+                    if (formData.partyId && e.target.value !== formData.companyName) {
+                      setFormData(prev => ({
+                        ...prev,
+                        partyId: '',
+                        companyName: '',
+                        panNo: '',
+                        nameAsPerPan: '',
+                      }));
+                    }
+                  }}
+                  onFocus={() => setPartyDropdownOpen(true)}
+                  required
+                />
+                {partySearch && (
+                  <button
+                    type="button"
+                    className="combobox-clear"
+                    onClick={() => handlePartySelect(null)}
+                    title="Clear party"
+                  >
+                    ✕
+                  </button>
+                )}
+                {partyDropdownOpen && (
+                  <div className="party-dropdown">
+                    {filteredParties.length === 0 ? (
+                      <div className="party-dropdown-empty">
+                        {parties.length === 0
+                          ? 'No parties registered. Add one in Party Master.'
+                          : 'No matching party found'}
+                      </div>
+                    ) : (
+                      filteredParties.map(p => (
+                        <div
+                          key={p.id}
+                          className={`party-dropdown-item ${formData.partyId === p.id ? 'selected' : ''}`}
+                          onClick={() => handlePartySelect(p)}
+                        >
+                          <div className="party-dropdown-title">{p.companyName}</div>
+                          <div className="party-dropdown-sub">
+                            <span>PAN: <strong style={{ color: 'var(--text-primary)' }}>{p.panNo}</strong></span>
+                            {p.nameAsPerPan && <span>• {p.nameAsPerPan}</span>}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               {parties.length === 0 && (
                 <div className="form-hint">No parties registered. Go to Party Master to add one.</div>
               )}
@@ -290,18 +371,6 @@ export default function TransactionsPage() {
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Total Amount</label>
-              <input
-                type="number"
-                className="form-input"
-                placeholder="0.00"
-                value={formData.totalAmount}
-                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                min="0"
-                step="0.01"
-              />
-            </div>
-            <div className="form-group">
               <label className="form-label">Taxable Amount *</label>
               <input
                 type="number"
@@ -310,6 +379,18 @@ export default function TransactionsPage() {
                 value={formData.taxableAmount}
                 onChange={(e) => setFormData({ ...formData, taxableAmount: e.target.value })}
                 required
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Total Amount</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="0.00"
+                value={formData.totalAmount}
+                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
                 min="0"
                 step="0.01"
               />
@@ -387,8 +468,8 @@ export default function TransactionsPage() {
                 <th>Date</th>
                 <th>Bill No.</th>
                 <th>Work</th>
-                <th>Total Amt</th>
                 <th>Taxable Amt</th>
+                <th>Total Amt</th>
                 <th>TDS Cat.</th>
                 <th>TDS %</th>
                 <th>TDS Amt</th>
@@ -415,8 +496,8 @@ export default function TransactionsPage() {
                     <td>{formatDate(t.paymentDate)}</td>
                     <td className="font-mono">{t.billNo}</td>
                     <td><span className="badge badge-purple">{t.workCategory}</span></td>
-                    <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                     <td className="text-right">{formatCurrency(t.taxableAmount)}</td>
+                    <td className="text-right">{formatCurrency(t.totalAmount || 0)}</td>
                     <td><span className="badge badge-blue">{t.tdsCategory}</span></td>
                     <td className="text-center">{t.tdsPercent}%</td>
                     <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(t.tdsAmount)}</td>
